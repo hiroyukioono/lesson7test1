@@ -20,14 +20,14 @@ HTML = """
     <title>QRコード生成ツール</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: Arial, sans-serif;
             max-width: 700px;
             margin: 40px auto;
-            padding: 0 20px;
+            padding: 20px;
         }
 
         h1 {
-            margin-bottom: 30px;
+            text-align: center;
         }
 
         label {
@@ -42,7 +42,7 @@ HTML = """
             width: 100%;
             box-sizing: border-box;
             padding: 10px;
-            margin-top: 6px;
+            margin-top: 5px;
             font-size: 16px;
         }
 
@@ -58,7 +58,7 @@ HTML = """
         }
 
         .error {
-            margin: 20px 0;
+            margin-top: 20px;
             padding: 12px;
             background: #ffe5e5;
             color: #b00000;
@@ -85,59 +85,99 @@ HTML = """
         }
     </style>
 </head>
+
 <body>
 
 <h1>QRコード生成ツール</h1>
 
 <form method="post">
-    <label for="text">テキスト（必須・最大500文字）</label>
-    <textarea id="text" name="text" maxlength="500"
-              required>{{ text }}</textarea>
 
-    <label for="size">サイズ（ピクセル）</label>
-    <input id="size" type="number" name="size"
-           value="{{ size }}" min="100" max="1024">
+    <label>テキスト（最大500文字）</label>
 
-    <label for="border">余白（border）</label>
-    <input id="border" type="number" name="border"
-           value="{{ border }}" min="0" max="20">
+    <textarea
+        name="text"
+        maxlength="500"
+        required
+    >{{ text }}</textarea>
 
-    <label for="error_correction">誤り訂正レベル</label>
-    <select id="error_correction" name="error_correction">
-        <option value="L" {% if error_correction == "L" %}selected{% endif %}>
-            L（約7%）
+    <label>サイズ（100～1024px）</label>
+
+    <input
+        type="number"
+        name="size"
+        value="{{ size }}"
+        min="100"
+        max="1024"
+    >
+
+    <label>余白（0～20）</label>
+
+    <input
+        type="number"
+        name="border"
+        value="{{ border }}"
+        min="0"
+        max="20"
+    >
+
+    <label>誤り訂正レベル</label>
+
+    <select name="error_correction">
+
+        <option value="L"
+        {% if error_correction == "L" %}selected{% endif %}>
+        L（約7%）
         </option>
-        <option value="M" {% if error_correction == "M" %}selected{% endif %}>
-            M（約15%）
+
+        <option value="M"
+        {% if error_correction == "M" %}selected{% endif %}>
+        M（約15%）
         </option>
-        <option value="Q" {% if error_correction == "Q" %}selected{% endif %}>
-            Q（約25%）
+
+        <option value="Q"
+        {% if error_correction == "Q" %}selected{% endif %}>
+        Q（約25%）
         </option>
-        <option value="H" {% if error_correction == "H" %}selected{% endif %}>
-            H（約30%）
+
+        <option value="H"
+        {% if error_correction == "H" %}selected{% endif %}>
+        H（約30%）
         </option>
+
     </select>
 
-    <button type="submit">QRコードを生成</button>
+    <button type="submit">
+        QRコードを生成
+    </button>
+
 </form>
 
 {% if error %}
-<div class="error">{{ error }}</div>
+<div class="error">
+    {{ error }}
+</div>
 {% endif %}
 
 {% if qr_data %}
 <div class="result">
-    <h2>QRコード</h2>
 
-    <img src="{{ qr_data }}" alt="生成されたQRコード">
+    <h2>生成結果</h2>
+
+    <img
+        src="{{ qr_data }}"
+        alt="QRコード"
+    >
 
     <br>
 
-    <a class="download"
-       href="{{ qr_data }}"
-       download="qrcode.png">
+    <a
+        class="download"
+        href="{{ qr_data }}"
+        download="qrcode.png"
+    >
         PNGをダウンロード
     </a>
+
 </div>
 {% endif %}
 
@@ -148,6 +188,7 @@ HTML = """
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+
     text = ""
     size = 300
     border = 4
@@ -156,6 +197,7 @@ def index():
     error = None
 
     if request.method == "POST":
+
         text = request.form.get("text", "").strip()
 
         try:
@@ -163,25 +205,31 @@ def index():
             border = int(request.form.get("border", "4"))
         except ValueError:
             error = "サイズと余白には数値を入力してください。"
-            size = 300
-            border = 4
 
         error_correction = request.form.get(
-            "error_correction", "M"
+            "error_correction",
+            "M"
         ).upper()
 
-        if not text:
+        if error is None and not text:
             error = "テキストを入力してください。"
-        elif len(text) > MAX_TEXT_LENGTH:
-            error = f"テキストは{MAX_TEXT_LENGTH}文字以内で入力してください。"
-        elif size < 100 or size > MAX_SIZE:
-            error = f"サイズは100～{MAX_SIZE}pxで指定してください。"
-        elif border < 0 or border > 20:
+
+        elif error is None and len(text) > MAX_TEXT_LENGTH:
+            error = "テキストは500文字以内で入力してください。"
+
+        elif error is None and not 100 <= size <= MAX_SIZE:
+            error = "サイズは100～1024pxで指定してください。"
+
+        elif error is None and not 0 <= border <= 20:
             error = "余白は0～20の範囲で指定してください。"
-        elif error_correction not in ("L", "M", "Q", "H"):
-            error = "誤り訂正レベルはL/M/Q/Hから選択してください。"
+
+        elif error is None and error_correction not in (
+            "L", "M", "Q", "H"
+        ):
+            error = "誤り訂正レベルが不正です。"
 
         if error is None:
+
             correction_map = {
                 "L": qrcode.constants.ERROR_CORRECT_L,
                 "M": qrcode.constants.ERROR_CORRECT_M,
@@ -190,11 +238,14 @@ def index():
             }
 
             try:
+
                 qr = qrcode.QRCode(
                     version=None,
-                    error_correction=correction_map[error_correction],
+                    error_correction=correction_map[
+                        error_correction
+                    ],
                     box_size=10,
-                    border=border,
+                    border=border
                 )
 
                 qr.add_data(text)
@@ -205,23 +256,33 @@ def index():
                     back_color="white"
                 ).convert("RGB")
 
-                # 指定されたピクセルサイズに変更
                 image = image.resize(
                     (size, size),
                     Image.Resampling.NEAREST
                 )
 
+                # ファイルを作らずメモリ上でPNG生成
                 buffer = io.BytesIO()
-                image.save(buffer, format="PNG")
+
+                image.save(
+                    buffer,
+                    format="PNG"
+                )
 
                 encoded = base64.b64encode(
                     buffer.getvalue()
                 ).decode("ascii")
 
-                qr_data = f"data:image/png;base64,{encoded}"
+                qr_data = (
+                    "data:image/png;base64,"
+                    + encoded
+                )
 
             except Exception as exc:
-                error = f"QRコードの生成に失敗しました: {exc}"
+                error = (
+                    "QRコードの生成に失敗しました。"
+                    f" 詳細: {exc}"
+                )
 
     return render_template_string(
         HTML,
@@ -230,18 +291,25 @@ def index():
         border=border,
         error_correction=error_correction,
         qr_data=qr_data,
-        error=error,
+        error=error
     )
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    debug = os.environ.get("DEBUG", "false").lower() == "true"
 
-    print(f"Server started: http://localhost:{port}")
+    # Renderでは環境変数PORTが設定される
+    port = int(
+        os.environ.get("PORT", 8000)
+    )
+
+    print("=" * 50)
+    print("QRコード生成ツールを起動しました")
+    print(f"PORT: {port}")
+    print("URL: http://127.0.0.1:8000")
+    print("=" * 50)
 
     app.run(
         host="0.0.0.0",
         port=port,
-        debug=debug,
+        debug=False
     )
